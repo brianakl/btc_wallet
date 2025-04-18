@@ -10,5 +10,7 @@ private:
     void handle_command(const std::string& cmd);
     void draw_ui();
     void process_input();
+    int selected_row;
+    bool in_details;
 };
 

@@ -1,6 +1,7 @@
 #include "wallet.h"
 #include "utils.h"
-#include "json/json.hpp"
+/*#include "json/json.hpp"*/
+#include "json.hpp"
 #include <fstream>
 #include <ctime>
 
@@ -45,6 +46,7 @@ void WalletManager::save_wallet(const Wallet& wallet) {
     // Append wallet to wallets.json
     std::vector<Wallet> all_wallets = wallets;
     all_wallets.push_back(wallet);
+    /*nlohmann::json arr = nlohmann::json::array();*/
     nlohmann::json arr = nlohmann::json::array();
     for (const auto& w : all_wallets) {
         arr.push_back({

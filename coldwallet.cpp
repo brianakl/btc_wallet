@@ -8,23 +8,15 @@
 #include <openssl/evp.h>
 #include <sodium.h>
 #include <vector>
-
-
-struct ColdWalletEntry {
-    std::string name;
-    std::string public_address;
-    std::time_t creation_date;
-    
-    ColdWalletEntry(const std::string& n, const std::string& addr)
-        : name(n), public_address(addr), creation_date(std::time(nullptr)) {}
-};
-
+#include <sys/stat.h>
+#include "json.hpp"
+#include <fstream>
 
 
 
 void generate_ephemeral_wallet() {
     // Secure memory allocation
-    unsigned char* seed = static_cast<unsigned char*>(
+    char* seed = static_cast<char*>(
         sodium_malloc(32)); // 256-bit seed
     randombytes_buf(seed, 32);
 
@@ -42,7 +34,21 @@ void generate_ephemeral_wallet() {
     unsigned char privkey[32];
     /*PBKDF2_HMAC_SHA512(seed, 32, "mnemonic", 8, 2048, privkey, 32);*/
     /*PKCS5_PBKDF2_HMAC_SHA1(seed, 32, "mnemonic", 8, 2048, privkey, 32);*/
-    PKCS5_PBKDF2_HMAC_SHA1(seed, 32, "mnemonic", 8, 2048, privkey, 32);
+
+    /*int PKCS5_PBKDF2_HMAC_SHA1(const char *pass, int passlen,*/
+    /*                       const unsigned char *salt, int saltlen, int iter,*/
+    /*                       int keylen, unsigned char *out);*/
+
+    PKCS5_PBKDF2_HMAC(seed, 32, 
+            (const unsigned char*)"mnemonic", 8,
+            2048, 
+            EVP_sha512(),
+            32,
+            privkey);
+
+    /*int PKCS5_PBKDF2_HMAC(const char *pass, int passlen,*/
+    /*                  const unsigned char *salt, int saltlen, int iter,*/
+    /*                  const EVP_MD *digest, int keylen, unsigned char *out);*/
 
     // Display workflow
     mvprintw(0, 0, "COLD WALLET GENERATION:");
