@@ -4,7 +4,7 @@
 /*#include <dirent.h>*/
 #include <sys/stat.h>
 #include <sys/types.h>
-
+#include <curl/curl.h>
 #include <openssl/sha.h>
 #include <openssl/ripemd.h>
 #include <secp256k1.h>
@@ -12,6 +12,7 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include "json.hpp"
 
 // Base58 alphabet
 const char* BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -152,10 +153,48 @@ std::string encrypt_private_key(const std::string& privkey, const std::string& p
 
 
 
-double fetch_balance_online(const std::string& address) {
-    // Use cURL to fetch balance from blockchain API
-    return 0.0;
+
+// Helper function for cURL write callback
+static size_t WriteCallback(char *ptr, size_t size, size_t nmemb, void *userdata) {
+    std::string* response = reinterpret_cast<std::string*>(userdata);
+    response->append(ptr, size * nmemb);
+    return size * nmemb;
 }
+
+
+double fetch_balance_online(const std::string& address)
+{
+    CURL* curl = curl_easy_init();
+    if (!curl) return 0.0;
+
+    /*std::string url = "https://blockchain.info/balance?active=" + address;*/
+    std::string url = "https://blockchain.info/balance?active=" + std::string("1Bc5TnUVszbZBJaTKoC1sAgtMqyLwY6zVH");
+    std::string response;
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback); // Use new name
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+
+    CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) return 0.0;
+
+    try {
+        nlohmann::json j = nlohmann::json::parse(response);
+        double balance_satoshi = json[address]["final_balance"];
+        /*double balance_satoshi = j["1Bc5TnUVszbZBJaTKoC1sAgtMqyLwY6zVH"]["final_balance"];*/
+        return balance_satoshi / 1e8; // Convert satoshis to BTC
+        
+    } catch (...) {
+        return -1.0;
+    }
+}
+
+
+
+
 
 std::string get_wallets_file() {
     std::string dir = std::string(getenv("HOME")) + "/.wallet/";

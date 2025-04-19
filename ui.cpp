@@ -162,7 +162,13 @@ void VimInterface::handle_command(const std::string& cmd) {
         noecho();
     } else if (cmd == "cold") {
         generate_cold_wallet_ui();
-    }
+    } else if (cmd == "refresh"){
+        
+    } else if (cmd == "help") {
+        echo();
+
+    } 
+
     // Add other commands as needed
 }
 
