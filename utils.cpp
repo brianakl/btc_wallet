@@ -9,10 +9,19 @@
 #include <openssl/ripemd.h>
 #include <secp256k1.h>
 #include <random>
+#include "json.hpp"
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <openssl/sha.h>
+#include <openssl/aes.h>
 #include <vector>
 #include <string>
 #include <cstring>
-#include "json.hpp"
+#include <stdexcept>
+#include <sstream>
+#include <iomanip>
+#include <openssl/bio.h>
+#include <openssl/buffer.h>
 
 // Base58 alphabet
 const char* BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -42,11 +51,71 @@ std::string base58_encode(const std::vector<unsigned char>& input) {
     return result;
 }
 
-std::string generate_public_address() {
+// Helper: Convert bytes to hex string
+/*std::string bytes_to_hex(const unsigned char* data, size_t len) {*/
+/*    static const char hex_digits[] = "0123456789abcdef";*/
+/*    std::string hex;*/
+/*    hex.reserve(len * 2);*/
+/*    for (size_t i = 0; i < len; ++i) {*/
+/*        hex.push_back(hex_digits[(data[i] >> 4) & 0xF]);*/
+/*        hex.push_back(hex_digits[data[i] & 0xF]);*/
+/*    }*/
+/*    return hex;*/
+/*}*/
+/**/
+/*// Main function*/
+/*bool generate_keypair_from_passphrase(*/
+/*    const std::string& passphrase,*/
+/*    std::vector<unsigned char>& out_privkey,  // 32 bytes*/
+/*    std::vector<unsigned char>& out_pubkey    // 33 bytes (compressed)*/
+/*) {*/
+/*    // 1. Derive 32-byte private key from passphrase using SHA256*/
+/*    unsigned char privkey[32];*/
+/*    SHA256(reinterpret_cast<const unsigned char*>(passphrase.data()), passphrase.size(), privkey);*/
+/**/
+/*    // 2. Check that privkey is valid for secp256k1*/
+/*    secp256k1_context* ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);*/
+/*    if (!secp256k1_ec_seckey_verify(ctx, privkey)) {*/
+/*        secp256k1_context_destroy(ctx);*/
+/*        return false; // Invalid key (very unlikely with SHA256, but check anyway)*/
+/*    }*/
+/**/
+/*    // 3. Generate public key*/
+/*    secp256k1_pubkey pubkey;*/
+/*    if (!secp256k1_ec_pubkey_create(ctx, &pubkey, privkey)) {*/
+/*        secp256k1_context_destroy(ctx);*/
+/*        return false;*/
+/*    }*/
+/**/
+/*    // 4. Serialize public key (compressed)*/
+/*    unsigned char pubkey_serialized[33];*/
+/*    size_t pubkey_len = 33;*/
+/*    secp256k1_ec_pubkey_serialize(ctx, pubkey_serialized, &pubkey_len, &pubkey, SECP256K1_EC_COMPRESSED);*/
+/**/
+/*    secp256k1_context_destroy(ctx);*/
+/**/
+/*    // 5. Output*/
+/*    out_privkey.assign(privkey, privkey + 32);*/
+/*    out_pubkey.assign(pubkey_serialized, pubkey_serialized + 33);*/
+/*    return true;*/
+/*}*/
+
+// TODO: public key used to be randomly generated, needs to be based on the private key
+std::string generate_public_address(const std::string& passphrase) {
     // Generate a random private key
-    std::random_device rd;
+    /*std::random_device rd;*/
     std::vector<unsigned char> privkey(32);
-    for (auto& b : privkey) b = rd();
+    std::vector<unsigned char> pub(32);
+    /*for (auto& b : privkey) b = rd();*/
+
+    /*generate_keypair_from_passphrase(passphrase, privkey, pub);*/
+    // derive private key from passphrase
+    unsigned char key[32];
+    SHA256(reinterpret_cast<const unsigned char*>(passphrase.data()), passphrase.size(), key);
+
+    // public key must be generated from passphrase, not random
+
+
 
     // Create secp256k1 context
     secp256k1_context* ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
@@ -90,18 +159,6 @@ std::string generate_public_address() {
 }
 
 
-#include <openssl/evp.h>
-#include <openssl/rand.h>
-#include <openssl/sha.h>
-#include <openssl/aes.h>
-#include <vector>
-#include <string>
-#include <cstring>
-#include <stdexcept>
-#include <sstream>
-#include <iomanip>
-#include <openssl/bio.h>
-#include <openssl/buffer.h>
 
 // Helper: Base64 encode
 std::string base64_encode(const unsigned char* data, size_t len) {
@@ -183,7 +240,7 @@ double fetch_balance_online(const std::string& address)
 
     try {
         nlohmann::json j = nlohmann::json::parse(response);
-        double balance_satoshi = json[address]["final_balance"];
+        double balance_satoshi = j[address]["final_balance"];
         /*double balance_satoshi = j["1Bc5TnUVszbZBJaTKoC1sAgtMqyLwY6zVH"]["final_balance"];*/
         return balance_satoshi / 1e8; // Convert satoshis to BTC
         

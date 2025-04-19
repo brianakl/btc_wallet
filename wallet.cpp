@@ -14,7 +14,7 @@ void WalletManager::create_new_wallet(const std::string& passphrase, const std::
     // Use utility functions from utils.cpp
     Wallet wallet;
     wallet.name = name;
-    wallet.public_address = generate_public_address(); // stub
+    wallet.public_address = generate_public_address(passphrase); // stub
     wallet.encrypted_private_key = encrypt_private_key("privkey", passphrase); // stub
     wallet.creation_date = std::time(nullptr);
     save_wallet(wallet);
