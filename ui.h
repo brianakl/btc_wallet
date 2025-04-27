@@ -12,5 +12,8 @@ private:
     void process_input();
     int selected_row;
     bool in_details;
+    void draw_wallet();
+    void handle_wallet_page();
+    void process_wallet_input();
 };
 

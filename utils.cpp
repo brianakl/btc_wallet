@@ -22,8 +22,8 @@
 #include <iomanip>
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
-
 // Base58 alphabet
+//
 const char* BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
 // Helper: Base58 encoding

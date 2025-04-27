@@ -2,6 +2,11 @@
 #include "coldwallet.h"
 #include <ncurses.h>
 #include <iostream>
+#include <vector>
+#include <string>
+#include <cstring>
+#include <iomanip>
+#include <sstream>
 
 /*VimInterface::VimInterface(WalletManager& wm) : walletManager(wm) {}*/
 
@@ -21,48 +26,7 @@ void VimInterface::run() {
     endwin();
 }
 
-/*void VimInterface::draw_ui() {*/
-/*    // Draw wallet list, details, etc.*/
-/*    clear();*/
-/*    mvprintw(0, 0, "Bitcoin Wallet - Vim Navigation (j/k/h/l, : for command)");*/
-/*    // ... draw wallets ...*/
-/*    refresh();*/
-/*}*/
 
-/*void VimInterface::process_input() {*/
-/*    int ch = getch();*/
-/*    if (ch == ':') {*/
-/*        echo();*/
-/*        char cmd[256];*/
-/*        mvprintw(1, 0, ":");*/
-/*        getnstr(cmd, sizeof(cmd)-1);*/
-/*        handle_command(cmd);*/
-/*        noecho();*/
-/*    }*/
-/*    // Handle j/k/h/l navigation here*/
-/*}*/
-
-/*void VimInterface::handle_command(const std::string& cmd) {*/
-/*    if (cmd == "q") {*/
-/*        endwin();*/
-/*        exit(0);*/
-/*    } else if (cmd == "new") {*/
-/*        // Prompt for passphrase and wallet name, then create*/
-/*        // ...*/
-/*    } else if (cmd == "cold") {*/
-/*        generate_cold_wallet_ui();*/
-/*    }*/
-/*    // Add other commands as needed*/
-/*}*/
-
-
-#include "ui.h"
-#include <ncurses.h>
-#include <vector>
-#include <string>
-#include <cstring>
-#include <iomanip>
-#include <sstream>
 
 extern void generate_cold_wallet_ui(); // from coldwallet.cpp
 
@@ -99,7 +63,102 @@ void VimInterface::draw_ui() {
         if (in_details) attroff(A_REVERSE);
     }
 
+
     refresh();
+}
+
+void VimInterface::draw_wallet() {
+    clear();
+
+    int row = 0;
+    mvprintw(row++, 0, "Bitcoin Wallet - Vim Navigation (j/k/h/l, : for command, q to quit)");
+
+    // Draw wallet list
+    mvprintw(row++, 0, "Selected Wallet:");
+    const auto& wallets = walletManager.get_wallets();
+    int list_height = std::min((int)wallets.size(), LINES - 8);
+
+
+    // Draw details panel
+    int details_col = 0;
+    mvprintw(2, details_col, "Details:");
+    if (!wallets.empty() && size_t(selected_row) < wallets.size()) {
+        const auto& w = wallets[selected_row];
+        if (in_details) attron(A_REVERSE);
+        mvprintw(3, details_col, "Name: %s", w.name.c_str());
+        mvprintw(4, details_col, "Address: %s", w.public_address.c_str());
+        mvprintw(5, details_col, "Created: %s", ctime(&w.creation_date));
+        double bal = walletManager.get_balance(w.public_address);
+        mvprintw(6, details_col, "Balance: %.8f BTC", bal);
+        if (in_details) attroff(A_REVERSE);
+    }
+
+    mvprintw(8, 0, "Send");
+    mvprintw(9, 0, "Recieve");
+
+
+    handle_wallet_page();
+
+    /*refresh();*/
+
+}
+
+void VimInterface::process_wallet_input(){
+    int ch = getch();
+
+    const auto& wallets = walletManager.get_wallets();
+    int wallet_count = wallets.size();
+
+    // TODO: fix, this was just copied from process_input()
+    if (ch == ':') {
+        echo();
+        char cmd[256];
+        move(LINES - 2, 0);
+        clrtoeol();
+        mvprintw(LINES - 2, 0, ":");
+        getnstr(cmd, sizeof(cmd) - 1);
+        handle_command(std::string(cmd));
+        noecho();
+    } else if (ch == 'j') {
+        if (!in_details && selected_row < wallet_count - 1) ++selected_row;
+    } else if (ch == 'k') {
+        if (!in_details && selected_row > 0) --selected_row;
+    } else if (ch == 'h') {
+        in_details = false;
+    } else if (ch == 'l') {
+        in_details = true;
+    } else if ((ch == '\n' || ch == 'l') && in_details == true){
+        // load wallet options screen
+        draw_wallet();
+
+    } else if (ch == '\n' && in_details == false){
+        in_details = true;
+    }
+
+
+}
+
+
+void VimInterface::handle_wallet_page(){
+
+    int ch = getch();
+    if (ch == ':') {
+        echo();
+        char cmd[256];
+        move(LINES - 2, 0);
+        clrtoeol();
+        mvprintw(LINES - 2, 0, ":");
+        getnstr(cmd, sizeof(cmd) - 1);
+        handle_command(std::string(cmd));
+        noecho();
+
+    while (ch != '\Ex' || ch != 'q'):
+        draw_wallet();
+        process_wallet_input();
+
+
+
+
 }
 
 void VimInterface::process_input() {
@@ -123,6 +182,12 @@ void VimInterface::process_input() {
     } else if (ch == 'h') {
         in_details = false;
     } else if (ch == 'l') {
+        in_details = true;
+    } else if ((ch == '\n' || ch == 'l') && in_details == true){
+        // load wallet options screen
+        draw_wallet();
+
+    } else if (ch == '\n' && in_details == false){
         in_details = true;
     }
 }
